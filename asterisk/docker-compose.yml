@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  ahn:
+    build: ahn
+    depends_on:
+      - asterisk
+
+  asterisk:
+    image: andrius/alpine-asterisk:13-current

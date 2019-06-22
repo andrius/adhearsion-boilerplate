@@ -11,6 +11,7 @@ gem 'sinatra'
 # Adhearsion 3.0.0rc1
 gem 'adhearsion', github: 'adhearsion/adhearsion'
 gem 'matrioska', github: 'adhearsion/matrioska', branch: 'feature/adhearsion-3'
+gem 'adhearsion-asterisk', github: 'adhearsion/adhearsion-asterisk', branch: 'adhearsion-3'
 
 group :development do
   gem 'pry'

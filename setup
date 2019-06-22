@@ -97,27 +97,34 @@ fi
 INSTALL_PATH="`( cd \"${INSTALL_PATH}\" && pwd )`"  # absolutized and normalized
 echo
 
-echo -e "Bootstraping ${YELLOW} docker image for adhearsion${NORMAL}"
+echo -e "Bootstraping ${YELLOW} docker environment${NORMAL}"
+# Copy adhearsion
+cd ${SCRIPT_PATH}/adhearsion
+
+cp --recursive . ${INSTALL_PATH}
+# Add/overwrite app specific data
 cd ${SCRIPT_PATH}/${APP}
 cp --recursive . ${INSTALL_PATH}
+
+# Build all the stuff
 cd ${INSTALL_PATH}
-docker-compose build --force-rm --pull ahn
+docker-compose build --force-rm --pull
 if [[ $? != 0 ]]; then
-    echo "Cannot build docker image for adhearsion"
+    echo "Cannot build docker images"
 
     echo "Exiting!"
     exit 1
 fi
 echo
 
-echo -e "Bootstraping ${YELLOW} docker image for adhearsion${NORMAL}"
-docker-compose build --force-rm --pull
-
 if [ "${APP}" == "adhearsion" ]; then
-    echo "ahn"
+    # nothing to to currently, adhearsion installed
+    :
 elif [ "${APP}" == "asterisk" ]; then
+    # try to up asterisk and adhearsion and get them working together
     echo "ast"
 elif [ "${APP}" == "freeswitch" ]; then
+    # try to up freeswitch and adhearsion and get them working together
     echo "fs"
 fi
 
