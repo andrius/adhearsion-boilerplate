@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# Wrapper for ruby bundle command in-docker.
+# Created to keep docker image size minimal;
+# to do so, it:
+# - installing build-dependences,
+# - executing bundle command with given command-line options;
+# - removing build dependences
+set -e
+apk --update --no-cache --virtual .build-dependencies add build-base \
+                                                          git \
+                                                          libxml2-dev \
+                                                          libxslt-dev \
+                                                          pcre-dev \
+                                                          ruby-dev \
+                                                          libffi-dev \
+                                                          libressl-dev
+bundle "$@"
+apk del .build-dependencies
+set +e

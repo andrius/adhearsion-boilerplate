@@ -1,0 +1,80 @@
+#!/bin/sh
+
+# Colors
+NORMAL="\033[0m"
+GREEN="\033[32m"
+RED="\033[31m"
+
+# Adhearsion should start and populate some test output within given timeframe
+AHN_TIMEOUT=8
+
+# System packages
+# coreutils: some utilities and timeout command
+SYSTEM_PACKAGES="coreutils \
+                 libxml2 \
+                 libxslt \
+                 pcre \
+                 ruby-nokogiri \
+                 libffi \
+                 libressl \
+                 libstdc++"
+
+# Build dependences
+BUILD_PACKAGES="build-base \
+                git \
+                libxml2-dev \
+                libxslt-dev \
+                pcre-dev \
+                ruby-dev \
+                libffi-dev \
+                libressl-dev"
+
+# Install necessary packages
+apk update
+apk add ${SYSTEM_PACKAGES}
+apk add --virtual .build-dependencies ${BUILD_PACKAGES}
+
+# Install bundler (adhearsion require 1.xx version of bundler)
+gem install bundler -v '~> 1.0'
+
+
+# Make sure that some binaries would be available for generated docker image
+mv ./bundle /
+mv ./ahn    /usr/bin/
+
+# trying to update Gemfile.lock
+bundle update --retry 5 --jobs 4 || bundle install --retry 5 --jobs 4
+
+# Creating new adhearsion application
+set -e
+# ahn script would ask what to to with existing Gemfile, we like to keep it
+echo "n" | bundle exec ahn create .
+bundle install --retry 5 --jobs 4
+set +e
+
+# trying to start generated adhearsion app and catch its output
+LOGS=$(timeout --signal=KILL ${AHN_TIMEOUT} bundle exec ahn start .)
+RES=$(echo -e ${LOGS} | grep "This is the Adhearsion Demo application")
+
+echo "Test results: ${RES}"
+echo
+echo
+
+if [ "${RES}" = "" ]; then
+  echo -e "${RED}Cannot start generated ahn app, please check logs below${NORMAL}"
+  echo
+  echo
+  echo -e ${LOGS}
+  exit 1
+fi
+
+# ${RES} != "", so adhersion app generated properly
+echo -e "${GREEN}ahn app created and tested successfully, enjoy${NORMAL}"
+
+# remove system stuff, self and caches
+apk del .build-dependencies >/dev/null 2>&1
+exec rm -rf ./build \
+            /usr/lib/ruby/gems/*/cache/* \
+            /var/cache/apk/* \
+            /tmp/* \
+            /var/tmp/*

@@ -1,0 +1,124 @@
+#! /usr/bin/env bash
+
+# Colors
+NORMAL="\033[0m"
+BOLD="\033[1m"
+YELLOW="\033[33m"
+RED="\033[31m"
+
+# Usage instructions
+help() {
+    echo "Usage:"
+    echo
+    echo -e "\tTo install adhearsion in given folder:"
+    echo -e "\t${BOLD}${YELLOW}./setup INSTALL_PATH${NORMAL}"
+    echo
+    echo -e "\tOr to install adhearsion with freeswitch:"
+    echo -e "\t${BOLD}${YELLOW}./setup INSTALL_PATH freeswitch${NORMAL}"
+    echo
+    echo -e "\tOr to install adhearsion with asterisk:"
+    echo -e "\t${BOLD}${YELLOW}./setup INSTALL_PATH asterisk${NORMAL}"
+}
+
+SCRIPT_PATH="`dirname \"$0\"`"                    # relative
+SCRIPT_PATH="`( cd \"${SCRIPT_PATH}\" && pwd )`"  # absolutized and normalized
+if [ -z "${SCRIPT_PATH}" ] ; then
+    # error; for some reason, the path is not accessible
+    # to the script (e.g. permissions re-evaled after suid)
+    echo -e "${BOLD}${RED}Failure:${NORMAL}${RED} for some reason the script path ${YELLOW}${SCRIPT_PATH}${RED} is not accessible (check permissions)${NORMAL}"
+    exit 1
+fi
+
+
+INSTALL_PATH=${1}
+APP=${2:-adhearsion}
+
+# script starting without arguments of with argument -h or --help
+if [[ $1 == "-h" || $1 == "--help" || "${INSTALL_PATH}" == "" ]]; then
+    help
+    exit 0
+fi
+
+if [ -d "${INSTALL_PATH}" ] ; then
+    echo -e "${BOLD}${RED}Failure:${NORMAL}${RED} install path ${YELLOW}${INSTALL_PATH}${RED} does already exists${NORMAL}"
+    echo
+    help
+    exit 1
+fi
+
+if [[ "${APP}" != "" && \
+      "${APP}" != "adhearsion" && \
+      "${APP}" != "asterisk" && \
+      "${APP}" != "freeswitch" ]]; then
+    echo -e "${BOLD}${RED}Failure:${NORMAL}${RED} Wrong argument (application name)${NORMAL}"
+    echo
+    help
+    exit 1
+fi
+
+echo -e "\033[4mChecking requirements:${NORMAL}"
+
+echo -e "Checking:${BOLD}${YELLOW} docker${NORMAL}"
+bash -c "docker -v > /dev/null 2>&1"
+if [[ $? != 0 ]]; then
+    echo "Docker is required for this project to run."
+    echo "For installation instructions, go to: https://docs.docker.com/install/"
+    echo "Exiting!"
+    exit 1
+else
+    echo "OK"
+fi
+echo
+
+echo -e "Checking:${BOLD}${YELLOW} docker-compose${NORMAL}"
+bash -c "docker-compose -v > /dev/null 2>&1"
+if [[ $? != 0 ]]; then
+    echo "docker-compose is required for this project to run."
+    echo "Installation instructions (for sudo user/root):"
+    echo "https://github.com/andrius/.dotfiles/blob/cb856af3435166e8500f1696f6f0870ed0eadf1f/bootstrap-debian.sh#L83:L87"
+    echo "Exiting!"
+    exit 1
+else
+    echo "OK"
+fi
+echo
+
+echo -e "Creating installation folder:${YELLOW} ${INSTALL_PATH}${NORMAL}"
+mkdir -p ${INSTALL_PATH}
+if [[ $? != 0 ]]; then
+    echo "Cannot create installation folder."
+    echo "Make sure that such folder does not exist and script do have right permissions to proceed."
+
+    echo "Exiting!"
+    exit 1
+else
+  echo "OK"
+fi
+INSTALL_PATH="`( cd \"${INSTALL_PATH}\" && pwd )`"  # absolutized and normalized
+echo
+
+echo -e "Bootstraping ${YELLOW} docker image for adhearsion${NORMAL}"
+cd ${SCRIPT_PATH}/${APP}
+cp --recursive . ${INSTALL_PATH}
+cd ${INSTALL_PATH}
+docker-compose build --force-rm --pull ahn
+if [[ $? != 0 ]]; then
+    echo "Cannot build docker image for adhearsion"
+
+    echo "Exiting!"
+    exit 1
+fi
+echo
+
+echo -e "Bootstraping ${YELLOW} docker image for adhearsion${NORMAL}"
+docker-compose build --force-rm --pull
+
+if [ "${APP}" == "adhearsion" ]; then
+    echo "ahn"
+elif [ "${APP}" == "asterisk" ]; then
+    echo "ast"
+elif [ "${APP}" == "freeswitch" ]; then
+    echo "fs"
+fi
+
+echo -e "\033[1mCheck out${YELLOW} script${NORMAL}${BOLD} to tweak this further and get started!${NORMAL}"
