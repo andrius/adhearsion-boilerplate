@@ -1,4 +1,4 @@
-#! /usr/bin/env bash
+#!/usr/bin/env bash
 
 # Colors
 NORMAL="\033[0m"
@@ -61,43 +61,42 @@ echo -e "\033[4mChecking requirements:${NORMAL}"
 echo -e "Checking:${BOLD}${YELLOW} docker${NORMAL}"
 bash -c "docker -v > /dev/null 2>&1"
 if [[ $? != 0 ]]; then
-    echo "Docker is required for this project to run."
-    echo "For installation instructions, go to: https://docs.docker.com/install/"
-    echo "Exiting!"
+    echo -e "${RED}Docker is required for this project to run.${NORMAL}"
+    echo -e "${RED}For installation instructions, go to: https://docs.docker.com/install/${NORMAL}"
+    echo -e "${RED}Exiting!${NORMAL}"
     exit 1
 else
-    echo "OK"
+    echo -e "${BOLD}OK${NORMAL}"
 fi
 echo
 
 echo -e "Checking:${BOLD}${YELLOW} docker-compose${NORMAL}"
 bash -c "docker-compose -v > /dev/null 2>&1"
 if [[ $? != 0 ]]; then
-    echo "docker-compose is required for this project to run."
-    echo "Installation instructions (for sudo user/root):"
-    echo "https://github.com/andrius/.dotfiles/blob/cb856af3435166e8500f1696f6f0870ed0eadf1f/bootstrap-debian.sh#L83:L87"
-    echo "Exiting!"
+    echo -e "${RED}docker-compose is required for this project to run.${NORMAL}"
+    echo -e "${RED}Installation instructions (for sudo user/root):${NORMAL}"
+    echo -e "${RED}https://github.com/andrius/.dotfiles/blob/cb856af3435166e8500f1696f6f0870ed0eadf1f/bootstrap-debian.sh#L83:L87${NORMAL}"
+    echo -e "${RED}Exiting!${NORMAL}"
     exit 1
 else
-    echo "OK"
+    echo -e "${BOLD}OK${NORMAL}"
 fi
 echo
 
 echo -e "Creating installation folder:${YELLOW} ${INSTALL_PATH}${NORMAL}"
 mkdir -p ${INSTALL_PATH}
 if [[ $? != 0 ]]; then
-    echo "Cannot create installation folder."
-    echo "Make sure that such folder does not exist and script do have right permissions to proceed."
-
-    echo "Exiting!"
+    echo "${RED}Cannot create installation folder.${NORMAL}"
+    echo "${RED}Make sure that such folder does not exist and script do have right permissions to proceed.${NORMAL}"
+    echo "${RED}Exiting!${NORMAL}"
     exit 1
 else
-  echo "OK"
+    echo -e "${BOLD}OK${NORMAL}"
 fi
 INSTALL_PATH="`( cd \"${INSTALL_PATH}\" && pwd )`"  # absolutized and normalized
 echo
 
-echo -e "Bootstraping ${YELLOW} docker environment${NORMAL}"
+echo -e "Bootstraping ${YELLOW}docker environment${NORMAL}"
 # Copy adhearsion
 cd ${SCRIPT_PATH}/adhearsion
 
@@ -108,24 +107,44 @@ cp --recursive . ${INSTALL_PATH}
 
 # Build all the stuff
 cd ${INSTALL_PATH}
+touch .env
 docker-compose build --force-rm --pull
 if [[ $? != 0 ]]; then
-    echo "Cannot build docker images"
-
-    echo "Exiting!"
+    echo -e "${RED}Cannot build docker images\nExiting!${NORMAL}"
     exit 1
 fi
 echo
 
 if [ "${APP}" == "adhearsion" ]; then
-    # nothing to to currently, adhearsion installed
-    :
+    # nothing to to, adhearsion installed
+    echo -e "${GREEN}ahn setup created and tested successfully, enjoy${NORMAL}"
 elif [ "${APP}" == "asterisk" ]; then
-    # try to up asterisk and adhearsion and get them working together
-    echo "ast"
+    # Asterisk host where adhearsion should connect to (asterisk in docker)
+    echo "AHN_ASTERISK_HOST=asterisk" >> .env
+
+    # SIP password and asterisk manager credentials
+    CREDENTIALS=$(docker run -ti --rm alpine sh -c 'apk --update add pwgen > /dev/null 2>&1 && pwgen --capitalize --ambiguous -C 24 3')
+    echo "ASTERISK_SIP_PASSWORD=$(echo -n ${CREDENTIALS} | cut -d' ' -f 1)" >> .env
+    echo "ASTERISK_MANAGER_USERNAME=$(echo -n ${CREDENTIALS} | cut -d' ' -f 2)" >> .env
+    echo "ASTERISK_MANAGER_PASSWORD=$(echo -n ${CREDENTIALS} | cut -d' ' -f 3)" >> .env
+
+    docker-compose up -d asterisk ahn
+    sleep 30
+    RES=$(docker-compose logs --tail=1000 ahn | grep 'Connected to Rayo server')
+    docker-compose stop
+    sleep 5
+    docker-compose rm -f
+    # echo
+    # echo
+    # echo -e "Test results: ${RES}"
+    # echo
+    if [ "${RES}" = "" ]; then
+        echo -e "${RED}Cannot connect ahn app with asterisk (were checking for logs line 'Connected to Rayo server')${NORMAL}"
+        exit 1
+    fi
+    echo -e "${GREEN}ahn setup with asterisk created and tested successfully, enjoy${NORMAL}"
+
 elif [ "${APP}" == "freeswitch" ]; then
     # try to up freeswitch and adhearsion and get them working together
     echo "fs"
 fi
-
-echo -e "\033[1mCheck out${YELLOW} script${NORMAL}${BOLD} to tweak this further and get started!${NORMAL}"

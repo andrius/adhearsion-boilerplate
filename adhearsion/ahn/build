@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 # Colors
 NORMAL="\033[0m"
 GREEN="\033[32m"
@@ -37,23 +39,23 @@ apk add --virtual .build-dependencies ${BUILD_PACKAGES}
 # Install bundler (adhearsion require 1.xx version of bundler)
 gem install bundler -v '~> 1.0'
 
-
 # Make sure that some binaries would be available for generated docker image
-mv ./bundle /
-mv ./ahn    /usr/bin/
+mv ./docker-entrypoint.sh /
+mv ./bundle               /
+mv ./ahn                  /usr/bin/
 
 # trying to update Gemfile.lock
 bundle update --retry 5 --jobs 4 || bundle install --retry 5 --jobs 4
 
 # Creating new adhearsion application
-set -e
 # ahn script would ask what to to with existing Gemfile, we like to keep it
 echo "n" | bundle exec ahn create .
 bundle install --retry 5 --jobs 4
-set +e
 
 # trying to start generated adhearsion app and catch its output
+set +e
 LOGS=$(timeout --signal=KILL ${AHN_TIMEOUT} bundle exec ahn start .)
+set -e
 RES=$(echo -e ${LOGS} | grep "This is the Adhearsion Demo application")
 
 echo "Test results: ${RES}"
@@ -61,15 +63,18 @@ echo
 echo
 
 if [ "${RES}" = "" ]; then
-  echo -e "${RED}Cannot start generated ahn app, please check logs below${NORMAL}"
   echo
   echo
   echo -e ${LOGS}
+  echo
+  echo -e "${RED}Cannot start generated ahn app, please check logs below${NORMAL}"
   exit 1
 fi
 
 # ${RES} != "", so adhersion app generated properly
 echo -e "${GREEN}ahn app created and tested successfully, enjoy${NORMAL}"
+
+set +e
 
 # remove system stuff, self and caches
 apk del .build-dependencies >/dev/null 2>&1

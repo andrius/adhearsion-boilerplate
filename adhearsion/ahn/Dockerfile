@@ -6,3 +6,6 @@ WORKDIR     ${WORKDIR}
 
 COPY . .
 RUN ./build
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["ahn", "start", "."]

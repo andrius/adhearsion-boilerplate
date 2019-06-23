@@ -5,6 +5,8 @@ services:
     build: ahn
     depends_on:
       - asterisk
+    env_file: .env
 
   asterisk:
-    image: andrius/alpine-asterisk:13-current
+    build: asterisk
+    env_file: .env
